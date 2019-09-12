@@ -1,4 +1,4 @@
-pimport requests, os
+import requests, os
 from urllib.parse import urlparse
 from abc import abstractmethod, ABCMeta
 from time import sleep
