@@ -23,7 +23,7 @@ def _get_bbc_frontpage_links():
 
     return articles
 
-class ArticleParser(metaclass=ABCMeta):
+class BaseArticleParser(metaclass=ABCMeta):
 
     @abstractmethod
     def get_title(self, soup: BeautifulSoup) -> str:
@@ -40,12 +40,12 @@ class ArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def get_soup(self, href: str) -> BeautifulSoup:
-        content = ArticleParser.get_content(href)
+        content = BaseArticleParser.get_content(href)
         return BeautifulSoup(content)
 
     @classmethod
     def get_content(self, href):
-        content = ArticleParser._check_cache_for_content(href)
+        content = BaseArticleParser._check_cache_for_content(href)
         if content is None:
             ua = UserAgent()
             resp = None
@@ -53,7 +53,7 @@ class ArticleParser(metaclass=ABCMeta):
                 headers = {'User-Agent': ua.random}
                 resp = requests.get(href, headers = headers)
                 sleep(5)
-            ArticleParser._cache_content(href, resp.text)
+            BaseArticleParser._cache_content(href, resp.text)
             return resp.text
 
         else:
@@ -61,13 +61,13 @@ class ArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def _cache_content(self, href, content):
-        cache_id = ArticleParser.get_cache_id(href)
+        cache_id = BaseArticleParser.get_cache_id(href)
         with open(f'.content_cache/{cache_id}.html', 'w+') as writer:
             writer.write(str(content))
 
     @classmethod
     def _check_cache_for_content(self, href):
-        cache_id = ArticleParser.get_cache_id(href)
+        cache_id = BaseArticleParser.get_cache_id(href)
         cache_location = f'.content_cache/{cache_id}.html'
         if os.path.exists(cache_location) and os.path.getsize(os.path.join(os.getcwd(), cache_location)) > 0:
             with open(cache_location, 'r') as reader:
@@ -77,14 +77,14 @@ class ArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def _delete_content_from_cache(self, href):
-        cache_id = ArticleParser.get_cache_id(href)
+        cache_id = BaseArticleParser.get_cache_id(href)
         os.remove(f'.content_cache/{cache_id}.html')
 
     @classmethod
     def get_cache_id(self, href):
         return hashlib.md5(href.encode('utf-8')).hexdigest()
 
-class BBCArticleParser(ArticleParser):
+class BBCArticleParser(BaseArticleParser):
 
     @classmethod
     def get_title(self, soup: BeautifulSoup) -> str:
@@ -97,7 +97,7 @@ class BBCArticleParser(ArticleParser):
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
 
-class BBCThreeArticleParser(ArticleParser):
+class BBCThreeArticleParser(BaseArticleParser):
 
     @classmethod
     def get_title(self, soup: BeautifulSoup) -> str:
@@ -110,7 +110,7 @@ class BBCThreeArticleParser(ArticleParser):
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
 
-class BBCSportArticleParser(ArticleParser):
+class BBCSportArticleParser(BaseArticleParser):
 
     @classmethod
     def get_title(self, soup: BeautifulSoup) -> str:
