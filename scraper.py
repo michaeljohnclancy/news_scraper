@@ -32,7 +32,9 @@ class BaseArticleParser(metaclass=ABCMeta):
             while resp == None or resp.status_code is not 200:
                 headers = {'User-Agent': ua.random}
                 resp = requests.get(href, headers = headers)
+                logger.debug(f'Href: {href}; Response code: {resp.status_code}')
                 sleep(5)
+
             self._cache_content(href, resp.text)
             return BeautifulSoup(resp.text)
 
@@ -42,23 +44,25 @@ class BaseArticleParser(metaclass=ABCMeta):
     @classmethod
     def _cache_content(self, href, content):
         cache_loc = f'.content_cache/{self.get_cache_id(href)}.html'
+        logger.debug('Writing content to {cache_loc}')
         with open(cache_loc, 'w+') as writer:
             writer.write(str(content))
 
     @classmethod
     def _check_cache_for_content(self, href):
-        cache_id = self.get_cache_id(href)
-        cache_location = f'.content_cache/{cache_id}.html'
-        if os.path.exists(cache_location) and os.path.getsize(os.path.join(os.getcwd(), cache_location)) > 0:
-            with open(cache_location, 'r') as reader:
+        cache_loc = f'.content_cache/{self.get_cache_id(href)}.html'
+        if os.path.exists(cache_loc) and os.path.getsize(os.path.join(os.getcwd(), cache_loc)) > 0:
+            logger.debug(f'Reading content from {cache_loc}')
+            with open(cache_loc, 'r') as reader:
                 return reader.read()
         else:
             return None
 
     @classmethod
     def _delete_content_from_cache(self, href):
-        cache_id = self.get_cache_id(href)
-        os.remove(f'.content_cache/{cache_id}.html')
+        cache_loc = f'.content_cache/{self.get_cache_id(href)}.html'
+        logger.debug(f'Deleting content at {cache_loc}')
+        os.remove(cache_loc)
 
     @classmethod
     def get_cache_id(self, href):
