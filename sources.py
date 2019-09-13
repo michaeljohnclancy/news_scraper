@@ -2,7 +2,7 @@ import logging, requests
 from bs4 import BeautifulSoup
 from typing import List
 from abc import abstractmethod, ABCMeta
-from scraper import BaseArticleParser, BBCArticleParser, ArticleParseException
+from parsers import BaseArticleParser, BBCArticleParser, ArticleParseException
 
 logger = logging.getLogger(__name__)
 
