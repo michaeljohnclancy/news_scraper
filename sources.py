@@ -30,7 +30,7 @@ class Source(metaclass=ABCMeta):
                 article = cls.parser.parse(href)
                 articles.append(article)
             except ArticleParseException as e:
-                logger.error(f'Could not parse article at {href}')
+                logger.error(f'Could not parse article {href} using available {cls.__name__} parsers.')
                 erroneous_hrefs.append(href)
 
         cls._write_erroneous_article_hrefs(erroneous_hrefs)

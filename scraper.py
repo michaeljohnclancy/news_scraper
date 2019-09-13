@@ -32,8 +32,7 @@ class BaseArticleParser(metaclass=ABCMeta):
             try:
                 return parser.try_subparsers(href)
             except ArticleParseException as e:
-                logger.error(e)
-            raise ArticleParseException
+                raise e
 
     @classmethod
     def try_subparsers(cls, href: str):
@@ -43,7 +42,7 @@ class BaseArticleParser(metaclass=ABCMeta):
                 return subparser.parse(href)
             except:
                 logger.debug(f'Parse failed using {subparser.__name__}')
-        raise ArticleParseException(f'No subparsers of {cls.__name__} could parse the article as {href}')
+        raise ArticleParseException
 
     @classmethod
     def choose_subparser(cls, href: str):
