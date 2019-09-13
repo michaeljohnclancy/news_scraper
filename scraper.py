@@ -15,9 +15,9 @@ def _get_bbc_frontpage_links():
 
     for article_element in article_elements:
         if 'bbcthree' in article_element.get('href'):
-            articles.append(BBCThreeArticleParser(article_element.get('href')))
+            articles.append(BBCThreeArticleParser.parse(article_element.get('href')))
         elif 'sport' in article_element.get('href'):
-            articles.append(BBCSportArticleParser(article_element.get('href')))
+            articles.append(BBCSportArticleParser.parse(article_element.get('href')))
         else:
             articles.append(BBCArticleParser.parse(article_element.get('href')))
 
@@ -52,7 +52,6 @@ class BaseArticleParser(metaclass=ABCMeta):
             while resp == None or resp.status_code is not 200:
                 headers = {'User-Agent': ua.random}
                 resp = requests.get(href, headers = headers)
-                sleep(5)
             BaseArticleParser._cache_content(href, resp.text)
             return resp.text
 
