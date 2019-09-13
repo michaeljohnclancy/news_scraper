@@ -43,19 +43,20 @@ class BaseArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def get_soup(self, href: str) -> BeautifulSoup:
-        content = BaseArticleParser.get_content(href)
+        content = self.get_content(href)
         return BeautifulSoup(content)
 
     @classmethod
     def get_content(self, href):
-        content = BaseArticleParser._check_cache_for_content(href)
+        content = self._check_cache_for_content(href)
         if content is None:
             ua = UserAgent()
             resp = None
             while resp == None or resp.status_code is not 200:
                 headers = {'User-Agent': ua.random}
                 resp = requests.get(href, headers = headers)
-            BaseArticleParser._cache_content(href, resp.text)
+                sleep(5)
+            self._cache_content(href, resp.text)
             return resp.text
 
         else:
@@ -63,13 +64,13 @@ class BaseArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def _cache_content(self, href, content):
-        cache_id = BaseArticleParser.get_cache_id(href)
+        cache_id = self.get_cache_id(href)
         with open(f'.content_cache/{cache_id}.html', 'w+') as writer:
             writer.write(str(content))
 
     @classmethod
     def _check_cache_for_content(self, href):
-        cache_id = BaseArticleParser.get_cache_id(href)
+        cache_id = self.get_cache_id(href)
         cache_location = f'.content_cache/{cache_id}.html'
         if os.path.exists(cache_location) and os.path.getsize(os.path.join(os.getcwd(), cache_location)) > 0:
             with open(cache_location, 'r') as reader:
@@ -79,7 +80,7 @@ class BaseArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def _delete_content_from_cache(self, href):
-        cache_id = BaseArticleParser.get_cache_id(href)
+        cache_id = self.get_cache_id(href)
         os.remove(f'.content_cache/{cache_id}.html')
 
     @classmethod
