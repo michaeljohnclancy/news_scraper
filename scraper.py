@@ -1,78 +1,84 @@
 from typing import List
-import requests, os, hashlib
+import requests, os, hashlib, logging
 from urllib.parse import urlparse
 from abc import abstractmethod, ABCMeta
 from time import sleep
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 
+logger = logging.getLogger(__name__)
+
 class BaseArticleParser(metaclass=ABCMeta):
 
     @abstractmethod
-    def get_title(self, soup: BeautifulSoup) -> str:
+    def get_title(cls, soup: BeautifulSoup) -> str:
         return
 
     @abstractmethod
-    def _get_body(self, soup: BeautifulSoup) -> str:
+    def _get_body(cls, soup: BeautifulSoup) -> str:
         return
 
     @classmethod
-    def parse(self, href: str) -> str:
-        soup = self.get_soup(href)
-        return ' '.join([self.get_title(soup)] + self.get_paragraphs(soup))
+    def parse(cls, href: str) -> str:
+        soup = cls.get_soup(href)
+        return ' '.join([cls.get_title(soup)] + cls.get_paragraphs(soup))
 
     @classmethod
-    def get_soup(self, href):
-        content = self._check_cache_for_content(href)
+    def get_soup(cls, href):
+        content = cls._check_cache_for_content(href)
         if content is None:
             ua = UserAgent()
             resp = None
             while resp == None or resp.status_code is not 200:
                 headers = {'User-Agent': ua.random}
                 resp = requests.get(href, headers = headers)
+                logger.debug(f'Href: {href}; Response code: {resp.status_code}')
                 sleep(5)
-            self._cache_content(href, resp.text)
+
+            cls._cache_content(href, resp.text)
             return BeautifulSoup(resp.text)
 
         else:
             return BeautifulSoup(content)
 
     @classmethod
-    def _cache_content(self, href, content):
-        cache_id = self.get_cache_id(href)
-        with open(f'.content_cache/{cache_id}.html', 'w+') as writer:
+    def _cache_content(cls, href, content):
+        cache_loc = f'.content_cache/{cls.get_cache_id(href)}.html'
+        logger.debug('Writing content to {cache_loc}')
+        with open(cache_loc, 'w+') as writer:
             writer.write(str(content))
 
     @classmethod
-    def _check_cache_for_content(self, href):
-        cache_id = self.get_cache_id(href)
-        cache_location = f'.content_cache/{cache_id}.html'
-        if os.path.exists(cache_location) and os.path.getsize(os.path.join(os.getcwd(), cache_location)) > 0:
-            with open(cache_location, 'r') as reader:
+    def _check_cache_for_content(cls, href):
+        cache_loc = f'.content_cache/{cls.get_cache_id(href)}.html'
+        if os.path.exists(cache_loc) and os.path.getsize(os.path.join(os.getcwd(), cache_loc)) > 0:
+            logger.debug(f'Reading content from {cache_loc}')
+            with open(cache_loc, 'r') as reader:
                 return reader.read()
         else:
             return None
 
     @classmethod
-    def _delete_content_from_cache(self, href):
-        cache_id = self.get_cache_id(href)
-        os.remove(f'.content_cache/{cache_id}.html')
+    def _delete_content_from_cache(cls, href):
+        cache_loc = f'.content_cache/{cls.get_cache_id(href)}.html'
+        logger.debug(f'Deleting content at {cache_loc}')
+        os.remove(cache_loc)
 
     @classmethod
-    def get_cache_id(self, href):
+    def get_cache_id(cls, href):
         return hashlib.md5(href.encode('utf-8')).hexdigest()
 
 class BBCArticleParser(BaseArticleParser):
 
     @classmethod
-    def get_title(self, soup: BeautifulSoup) -> str:
+    def get_title(cls, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'story-body__h1'})
         if title_element is None:
             title_element = soup.find('span', {'class': 'cta'})
         return title_element.text if title_element is not None else None
 
     @classmethod
-    def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
+    def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
         story_element_div = soup.find('div', {'class': 'story-body__inner'})
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
@@ -80,12 +86,12 @@ class BBCArticleParser(BaseArticleParser):
 class BBCThreeArticleParser(BaseArticleParser):
 
     @classmethod
-    def get_title(self, soup: BeautifulSoup) -> str:
+    def get_title(cls, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'LongArticleParser-headline'})
         return title_element.text if title_element is not None else None
 
     @classmethod
-    def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
+    def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
         story_element_div = soup.find('div', {'class': 'LongArticleParser-body'})
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
@@ -93,12 +99,12 @@ class BBCThreeArticleParser(BaseArticleParser):
 class BBCSportArticleParser(BaseArticleParser):
 
     @classmethod
-    def get_title(self, soup: BeautifulSoup) -> str:
+    def get_title(cls, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'story-headline'})
         return title_element.text if title_element is not None else None
 
     @classmethod
-    def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
+    def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
         story_element_div = soup.find('div', {'id': 'story-body'})
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
@@ -106,14 +112,14 @@ class BBCSportArticleParser(BaseArticleParser):
 class BBCNewsroundArticleParser(BaseArticleParser):
 
     @classmethod
-    def get_title(self, soup: BeautifulSoup) -> str:
+    def get_title(cls, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'newsround-story-header__title-text'})
         if title_element is None:
             title_element = soup.find('h1', {'class': 'newsround-legacy-story-header__title-text'})
         return title_element.text if title_element is not None else None
 
     @classmethod
-    def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
+    def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
         story_element_div = soup.find('section', {'class': 'newsround-story-body'})
         story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
@@ -136,46 +142,69 @@ class Source(metaclass=ABCMeta):
     parser_list = []
 
     @abstractmethod
-    def get_hrefs(self):
-
-    @abstractmethod
-    def get_blacklist(self):
+    def get_hrefs(cls):
         return
 
     @classmethod
 
     @abstractmethod
-    def get_blacklist(self):
+    def get_blacklist(cls):
         return
 
     @classmethod
-    def parse_article(self, href: str):
-        parser_cost = -1
-
-        for p in self.parser_list:
-            cost = href.find(p[0])
-            if cost > parser_cost:
-                parser = p[1]
-                parser_cost = cost
-
-        if parser_cost >= 0:
-            print("Chosen parser: " + parser.__name__)
-            return parser.parse(href)
-        else:
-            print("ERROR: No suitable parser found")
+    def choose_parser(cls, href: str):
+        try:
+            parser = min(
+                [(identifier, parser) for (identifier, parser) in cls.parser_list if identifier in href],
+                key = lambda p : href.find(p[0])
+            )[1]
+            logger.info(f'Chosen parser for {href}: {parser.__name__}')
+            return parser
+        except ValueError as e:
+            logger.error(f'ERROR: No suitable parser found for {href}', e)
+            #Put article somewhere for inspection as to why find a parser failed.
             return None
 
     @classmethod
-    def fetch_new(self) -> str:
+    def parse_article(cls, href: str):
+        parser = cls.choose_parser(href)
+        try:
+            return parser.parse(href)
+        except Exception as e:
+            logger.error(f'ERROR: Parse failed for {href}', e)
+            return None
+
+    @classmethod
+    def fetch_new(cls) -> str:
+        logger.info('Fetching hrefs...')
+
         articles = []
-        hrefs = self.get_hrefs()
+        erroneous_hrefs = []
+        hrefs = cls.get_hrefs()
+
         for href in hrefs:
-            if any(x for x in self.get_blacklist() if x in href):
+            if any(x for x in cls.get_blacklist() if x in href):
                 continue
-            article = self.parse_article(href)
+            article = cls.parse_article(href)
             if article is not None:
                 articles.append(article)
+            else:
+                erroneous_hrefs.append(href)
+
+        cls._write_erroneous_article_hrefs(erroneous_hrefs)
         return articles
+
+    @classmethod
+    def _write_erroneous_article_hrefs(cls, hrefs: List[str]) -> None:
+        with open(f'.failed_hrefs/{cls.__name__}', 'a') as writer:
+            for href in hrefs:
+                writer.write(href + '\n')
+
+    @classmethod
+    def _read_erroneous_article_hrefs(cls) -> List[str]:
+        with open(f'.failed_hrefs/{cls.__name__}','a') as reader:
+            return [str(href) for href in reader.read().split('\n')]
+
 
 class BBC(Source):
 
@@ -188,12 +217,12 @@ class BBC(Source):
             ]
 
     @classmethod
-    def get_hrefs(self) -> List[str]:
+    def get_hrefs(cls) -> List[str]:
         home_page = requests.get('https://www.bbc.co.uk')
         soup = BeautifulSoup(home_page.content)
         article_elements = soup.findAll('a', {'class': 'top-story'})
         return [element.get('href') for element in article_elements]
 
     @classmethod
-    def get_blacklist(self) -> List[str]:
-        return ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
+    def get_blacklist(cls) -> List[str]:
+        return ['bbcthree/clips', 'sport', 'bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
