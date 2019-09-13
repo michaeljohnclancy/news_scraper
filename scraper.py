@@ -139,9 +139,10 @@ class Source(metaclass=ABCMeta):
     @classmethod
     def choose_parser(self, href: str):
         try:
-            parser = max(
-                [(cost, parser) for (cost, parser) in self.parser_list if href.find(cost) >= 0],
-                key = lambda p : href.find(p[0]))[1]
+            parser = min(
+                [(identifier, parser) for (identifier, parser) in self.parser_list if identifier in href],
+                key = lambda p : href.find(p[0])
+            )[1]
             logger.info(f'Chosen parser for {href}: {parser.__name__}')
             return parser
         except ValueError as e:
