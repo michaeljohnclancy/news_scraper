@@ -12,21 +12,17 @@ def _get_bbc_frontpage_links():
     article_elements = soup.findAll('a', {'class': 'top-story'})
 
     articles = []
-
-    blacklist = ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds']
+    blacklist = ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
 
     for article_element in article_elements:
-        print(article_element.get('href'))
-        if any(x for x in blacklist if x in article_element.get('href')):
-            pass
-        elif 'bbcthree' in article_element.get('href'):
-            articles.append(BBCThreeArticleParser.parse(article_element.get('href')))
-        elif 'newsround' in article_element.get('href'):
-            articles.append(BBCNewsroundArticleParser.parse(article_element.get('href')))
-        elif 'sport' in article_element.get('href'):
-            articles.append(BBCSportArticleParser.parse(article_element.get('href')))
-        else:
-            articles.append(BBCArticleParser.parse(article_element.get('href')))
+        url = article_element.get('href')
+        print(url)
+
+        if any(x for x in blacklist if x in url):
+            continue
+        article = UniversalArticleParser.parse(url)
+        if article != None:
+            articles.append(article)
 
     return articles
 
@@ -146,3 +142,30 @@ class BBCNewsroundArticleParser(BaseArticleParser):
         story_element_div = soup.find('section', {'class': 'newsround-story-body'})
         story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
+
+class UniversalArticleParser(BaseArticleParser):
+
+    parser_list = [
+                ('www.bbc.co.uk/news/', BBCArticleParser),
+                ('www.bbc.co.uk/bbcthree/', BBCThreeArticleParser),
+                ('www.bbc.co.uk/sport/', BBCSportArticleParser),
+                ('www.bbc.co.uk/newsround/', BBCNewsroundArticleParser)
+            ]
+
+    @classmethod
+    def parse(self, href: str) -> str:
+
+        parser_cost = -1
+
+        for p in self.parser_list:
+            cost = href.find(p[0])
+            if cost > parser_cost:
+                parser = p[1]
+                parser_cost = cost
+
+        if parser_cost >= 0:
+            print("Chosen parser: " + parser.__name__)
+            return parser.parse(href)
+        else:
+            print("ERROR: No suitable parser found")
+            return None
