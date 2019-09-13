@@ -1,0 +1,5 @@
+.failed_hrefs/*
+!.failed_hrefs/.gitignore
+
+.content_cache/*
+!.content_cache/.gitignore

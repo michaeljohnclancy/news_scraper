@@ -161,17 +161,35 @@ class Source(metaclass=ABCMeta):
 
     @classmethod
     def fetch_new(self) -> str:
-        logger.debug('Fetching hrefs...')
+        logger.info('Fetching hrefs...')
 
         articles = []
+        erroneous_hrefs = []
         hrefs = self.get_hrefs()
+
         for href in hrefs:
             if any(x for x in self.get_blacklist() if x in href):
                 continue
             article = self.parse_article(href)
             if article is not None:
                 articles.append(article)
+            else:
+                erroneous_hrefs.append(href)
+
+        self._write_erroneous_article_hrefs(erroneous_hrefs)
         return articles
+
+    @classmethod
+    def _write_erroneous_article_hrefs(self, hrefs: List[str]) -> None:
+        with open(f'.failed_hrefs/{self.__name__}', 'a') as writer:
+            for href in hrefs:
+                writer.write(href + '\n')
+
+    @classmethod
+    def _read_erroneous_article_hrefs(self) -> List[str]:
+        with open(f'.failed_hrefs/{self.__name__}','a') as reader:
+            return [str(href) for href in reader.read().split('\n')]
+
 
 class BBC(Source):
 
