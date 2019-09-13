@@ -69,10 +69,10 @@ class BaseArticleParser(metaclass=ABCMeta):
                 sleep(5)
 
             cls._cache_content(href, resp.text)
-            return BeautifulSoup(resp.text)
+            return BeautifulSoup(resp.text, features = 'html.parser')
 
         else:
-            return BeautifulSoup(content)
+            return BeautifulSoup(content, features = 'html.parser')
 
     @classmethod
     def _cache_content(cls, href, content):

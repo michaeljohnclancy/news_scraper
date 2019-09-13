@@ -54,6 +54,6 @@ class BBC(Source):
     @classmethod
     def get_hrefs(cls) -> List[str]:
         home_page = requests.get('https://www.bbc.co.uk')
-        soup = BeautifulSoup(home_page.content)
+        soup = BeautifulSoup(home_page.content, features = 'html.parser')
         article_elements = soup.findAll('a', {'class': 'top-story'})
         return [element.get('href') for element in article_elements]
