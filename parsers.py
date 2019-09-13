@@ -1,5 +1,5 @@
-from typing import List
 import requests, os, hashlib, logging
+from typing import List
 from urllib.parse import urlparse
 from abc import abstractmethod, ABCMeta
 from time import sleep
@@ -9,6 +9,8 @@ from fake_useragent import UserAgent
 logger = logging.getLogger(__name__)
 
 class BaseArticleParser(metaclass=ABCMeta):
+
+    subparsers: List[str] = []
 
     @abstractmethod
     def get_title(cls, soup: BeautifulSoup) -> str:
@@ -21,7 +23,38 @@ class BaseArticleParser(metaclass=ABCMeta):
     @classmethod
     def parse(cls, href: str) -> str:
         soup = cls.get_soup(href)
-        return ' '.join([cls.get_title(soup)] + cls.get_paragraphs(soup))
+
+        parser = cls.choose_subparser(href)
+
+        try:
+            return ' '.join([parser.get_title(soup)] + parser.get_paragraphs(soup))
+        except Exception as e:
+            try:
+                return parser.try_subparsers(href)
+            except ArticleParseException as e:
+                raise e
+
+    @classmethod
+    def try_subparsers(cls, href: str):
+        logger.debug(f'Parse failed using default parser: {cls.__name__}; trying additional parsers (if any) now...')
+        for (identifier, subparser) in cls.subparsers:
+            try:
+                return subparser.parse(href)
+            except:
+                logger.debug(f'Parse failed using {subparser.__name__}')
+        raise ArticleParseException
+
+    @classmethod
+    def choose_subparser(cls, href: str):
+        try:
+            parser = min(
+                [(identifier, parser) for (identifier, parser) in cls.subparsers if identifier in href],
+                key = lambda p : href.find(p[0])
+            )[1]
+            logger.debug(f'Chosen parser for {href}: {parser.__name__}')
+            return parser
+        except ValueError as e:
+            return cls
 
     @classmethod
     def get_soup(cls, href):
@@ -36,10 +69,10 @@ class BaseArticleParser(metaclass=ABCMeta):
                 sleep(5)
 
             cls._cache_content(href, resp.text)
-            return BeautifulSoup(resp.text)
+            return BeautifulSoup(resp.text, features = 'html.parser')
 
         else:
-            return BeautifulSoup(content)
+            return BeautifulSoup(content, features = 'html.parser')
 
     @classmethod
     def _cache_content(cls, href, content):
@@ -67,21 +100,6 @@ class BaseArticleParser(metaclass=ABCMeta):
     @classmethod
     def get_cache_id(cls, href):
         return hashlib.md5(href.encode('utf-8')).hexdigest()
-
-class BBCArticleParser(BaseArticleParser):
-
-    @classmethod
-    def get_title(cls, soup: BeautifulSoup) -> str:
-        title_element = soup.find('h1', {'class': 'story-body__h1'})
-        if title_element is None:
-            title_element = soup.find('span', {'class': 'cta'})
-        return title_element.text if title_element is not None else None
-
-    @classmethod
-    def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
-        story_element_div = soup.find('div', {'class': 'story-body__inner'})
-        story_elements = story_element_div.findAll('p')
-        return list(story_element.text for story_element in story_elements)
 
 class BBCThreeArticleParser(BaseArticleParser):
 
@@ -124,89 +142,32 @@ class BBCNewsroundArticleParser(BaseArticleParser):
         story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
 
-class Source(metaclass=ABCMeta):
+class BBCArticleParser(BaseArticleParser):
 
-    parser_list = []
-
-    @abstractmethod
-    def get_hrefs(cls):
-        return
-
-    @abstractmethod
-    def get_blacklist(cls):
-        return
-
-    @classmethod
-    def choose_parser(cls, href: str):
-        try:
-            parser = min(
-                [(identifier, parser) for (identifier, parser) in cls.parser_list if identifier in href],
-                key = lambda p : href.find(p[0])
-            )[1]
-            logger.info(f'Chosen parser for {href}: {parser.__name__}')
-            return parser
-        except ValueError as e:
-            logger.error(f'ERROR: No suitable parser found for {href}', e)
-            #Put article somewhere for inspection as to why find a parser failed.
-            return None
-
-    @classmethod
-    def parse_article(cls, href: str):
-        parser = cls.choose_parser(href)
-        try:
-            return parser.parse(href)
-        except Exception as e:
-            logger.error(f'ERROR: Parse failed for {href}', e)
-            return None
-
-    @classmethod
-    def fetch_new(cls) -> str:
-        logger.info('Fetching hrefs...')
-
-        articles = []
-        erroneous_hrefs = []
-        hrefs = cls.get_hrefs()
-
-        for href in hrefs:
-            if any(x for x in cls.get_blacklist() if x in href):
-                continue
-            article = cls.parse_article(href)
-            if article is not None:
-                articles.append(article)
-            else:
-                erroneous_hrefs.append(href)
-
-        cls._write_erroneous_article_hrefs(erroneous_hrefs)
-        return articles
-
-    @classmethod
-    def _write_erroneous_article_hrefs(cls, hrefs: List[str]) -> None:
-        with open(f'.failed_hrefs/{cls.__name__}', 'a') as writer:
-            for href in hrefs:
-                writer.write(href + '\n')
-
-    @classmethod
-    def _read_erroneous_article_hrefs(cls) -> List[str]:
-        with open(f'.failed_hrefs/{cls.__name__}','a') as reader:
-            return [str(href) for href in reader.read().split('\n')]
-
-
-class BBC(Source):
-
-    parser_list = [
-                ('www.bbc.co.uk/news/', BBCArticleParser),
+    subparsers = [
                 ('www.bbc.co.uk/bbcthree/', BBCThreeArticleParser),
                 ('www.bbc.co.uk/sport/', BBCSportArticleParser),
                 ('www.bbc.co.uk/newsround/', BBCNewsroundArticleParser)
             ]
 
-    @classmethod
-    def get_hrefs(cls) -> List[str]:
-        home_page = requests.get('https://www.bbc.co.uk')
-        soup = BeautifulSoup(home_page.content)
-        article_elements = soup.findAll('a', {'class': 'top-story'})
-        return [element.get('href') for element in article_elements]
+    #blacklist = ['bbcthree/clips', 'sport', 'bitesize',
+    #             'programmes', 'archive', 'ideas',
+    #             'food', 'sounds', 'news/av']
 
     @classmethod
-    def get_blacklist(cls) -> List[str]:
-        return ['bbcthree/clips', 'sport', 'bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
+    def get_title(cls, soup: BeautifulSoup) -> str:
+        title_element = soup.find('h1', {'class': 'story-body__h1'})
+        if title_element is None:
+            title_element = soup.find('span', {'class': 'cta'})
+        return title_element.text if title_element is not None else None
+
+    @classmethod
+    def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
+        story_element_div = soup.find('div', {'class': 'story-body__inner'})
+        story_elements = story_element_div.findAll('p')
+        return list(story_element.text for story_element in story_elements)
+
+class ArticleParseException(Exception):
+    pass
+
+
