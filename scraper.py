@@ -6,26 +6,6 @@ from time import sleep
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 
-def _get_bbc_frontpage_links():
-    resp = requests.get('https://www.bbc.co.uk')
-    soup = BeautifulSoup(resp.content)
-    article_elements = soup.findAll('a', {'class': 'top-story'})
-
-    articles = []
-    blacklist = ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
-
-    for article_element in article_elements:
-        url = article_element.get('href')
-        print(url)
-
-        if any(x for x in blacklist if x in url):
-            continue
-        article = UniversalArticleParser.parse(url)
-        if article != None:
-            articles.append(article)
-
-    return articles
-
 class BaseArticleParser(metaclass=ABCMeta):
 
     @abstractmethod
@@ -39,15 +19,10 @@ class BaseArticleParser(metaclass=ABCMeta):
     @classmethod
     def parse(self, href: str) -> str:
         soup = self.get_soup(href)
-        return ''.join([self.get_title(soup)] + self.get_paragraphs(soup))
+        return ' '.join([self.get_title(soup)] + self.get_paragraphs(soup))
 
     @classmethod
-    def get_soup(self, href: str) -> BeautifulSoup:
-        content = self.get_content(href)
-        return BeautifulSoup(content)
-
-    @classmethod
-    def get_content(self, href):
+    def get_soup(self, href):
         content = self._check_cache_for_content(href)
         if content is None:
             ua = UserAgent()
@@ -57,10 +32,10 @@ class BaseArticleParser(metaclass=ABCMeta):
                 resp = requests.get(href, headers = headers)
                 sleep(5)
             self._cache_content(href, resp.text)
-            return resp.text
+            return BeautifulSoup(resp.text)
 
         else:
-            return content
+            return BeautifulSoup(content)
 
     @classmethod
     def _cache_content(self, href, content):
@@ -143,18 +118,21 @@ class BBCNewsroundArticleParser(BaseArticleParser):
         story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
 
-class UniversalArticleParser(BaseArticleParser):
 
-    parser_list = [
-                ('www.bbc.co.uk/news/', BBCArticleParser),
-                ('www.bbc.co.uk/bbcthree/', BBCThreeArticleParser),
-                ('www.bbc.co.uk/sport/', BBCSportArticleParser),
-                ('www.bbc.co.uk/newsround/', BBCNewsroundArticleParser)
-            ]
+class Source(metaclass=ABCMeta):
+
+    parser_list = []
+
+    @abstractmethod
+    def get_hrefs(self):
+        return
+
+    @abstractmethod
+    def get_blacklist(self):
+        return
 
     @classmethod
-    def parse(self, href: str) -> str:
-
+    def parse_article(self, href: str):
         parser_cost = -1
 
         for p in self.parser_list:
@@ -170,17 +148,6 @@ class UniversalArticleParser(BaseArticleParser):
             print("ERROR: No suitable parser found")
             return None
 
-
-class Source(metaclass=ABCMeta):
-
-    @abstractmethod
-    def get_hrefs(self):
-        return
-
-    @abstractmethod
-    def get_blacklist(self):
-        return
-
     @classmethod
     def fetch_new(self) -> str:
         articles = []
@@ -188,20 +155,27 @@ class Source(metaclass=ABCMeta):
         for href in hrefs:
             if any(x for x in self.get_blacklist() if x in href):
                 continue
-            article = UniversalArticleParser.parse(href)
+            article = self.parse_article(href)
             if article is not None:
                 articles.append(article)
         return articles
 
 class BBC(Source):
 
+    parser_list = [
+                ('www.bbc.co.uk/news/', BBCArticleParser),
+                ('www.bbc.co.uk/bbcthree/', BBCThreeArticleParser),
+                ('www.bbc.co.uk/sport/', BBCSportArticleParser),
+                ('www.bbc.co.uk/newsround/', BBCNewsroundArticleParser)
+            ]
+
     @classmethod
-    def get_hrefs(self):
+    def get_hrefs(self) -> List[str]:
         home_page = requests.get('https://www.bbc.co.uk')
         soup = BeautifulSoup(home_page.content)
         article_elements = soup.findAll('a', {'class': 'top-story'})
         return [element.get('href') for element in article_elements]
 
     @classmethod
-    def get_blacklist(self):
+    def get_blacklist(self) -> List[str]:
         return ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
