@@ -169,3 +169,39 @@ class UniversalArticleParser(BaseArticleParser):
         else:
             print("ERROR: No suitable parser found")
             return None
+
+
+class Source(metaclass=ABCMeta):
+
+    @abstractmethod
+    def get_hrefs(self):
+        return
+
+    @abstractmethod
+    def get_blacklist(self):
+        return
+
+    @classmethod
+    def fetch_new(self) -> str:
+        articles = []
+        hrefs = self.get_hrefs()
+        for href in hrefs:
+            if any(x for x in self.get_blacklist() if x in href):
+                continue
+            article = UniversalArticleParser.parse(href)
+            if article is not None:
+                articles.append(article)
+        return articles
+
+class BBC(Source):
+
+    @classmethod
+    def get_hrefs(self):
+        home_page = requests.get('https://www.bbc.co.uk')
+        soup = BeautifulSoup(home_page.content)
+        article_elements = soup.findAll('a', {'class': 'top-story'})
+        return [element.get('href') for element in article_elements]
+
+    @classmethod
+    def get_blacklist(self):
+        return ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
