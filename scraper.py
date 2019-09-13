@@ -143,9 +143,6 @@ class BBCNewsroundArticleParser(BaseArticleParser):
         story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
 
-class ArticleParseException(Exception):
-    pass
-
 class BBCArticleParser(BaseArticleParser):
 
     subparsers = [
@@ -170,5 +167,8 @@ class BBCArticleParser(BaseArticleParser):
         story_element_div = soup.find('div', {'class': 'story-body__inner'})
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
+
+class ArticleParseException(Exception):
+    pass
 
 
