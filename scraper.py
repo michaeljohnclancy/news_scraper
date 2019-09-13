@@ -137,17 +137,23 @@ class Source(metaclass=ABCMeta):
         return
 
     @classmethod
-    def parse_article(self, href: str):
+    def choose_parser(self, href: str):
         try:
-            parser_cost, parser = max(
+            parser = max(
                 [(cost, parser) for (cost, parser) in self.parser_list if href.find(cost) >= 0],
-                key = lambda p : href.find(p[0]))
+                key = lambda p : href.find(p[0]))[1]
             logger.info(f'Chosen parser for {href}: {parser.__name__}')
-            return parser.parse(href)
+            return parser
         except ValueError as e:
             logger.error(f'ERROR: No suitable parser found for {href}', e)
             #Put article somewhere for inspection as to why find a parser failed.
             return None
+
+    @classmethod
+    def parse_article(self, href: str):
+        parser = self.choose_parser(href)
+        try:
+            return parser.parse(href)
         except Exception as e:
             logger.error(f'ERROR: Parse failed for {href}', e)
             return None
