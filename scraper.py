@@ -37,7 +37,7 @@ class BaseArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def try_subparsers(cls, href: str):
-        logger.info(f'Parse failed using default parser: {cls.__name__}; trying additional parsers (if any) now...')
+        logger.debug(f'Parse failed using default parser: {cls.__name__}; trying additional parsers (if any) now...')
         for (identifier, subparser) in cls.subparsers:
             try:
                 return subparser.parse(href)
@@ -52,7 +52,7 @@ class BaseArticleParser(metaclass=ABCMeta):
                 [(identifier, parser) for (identifier, parser) in cls.subparsers if identifier in href],
                 key = lambda p : href.find(p[0])
             )[1]
-            logger.info(f'Chosen parser for {href}: {parser.__name__}')
+            logger.debug(f'Chosen parser for {href}: {parser.__name__}')
             return parser
         except ValueError as e:
             return cls
