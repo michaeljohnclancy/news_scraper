@@ -143,13 +143,27 @@ class BBCNewsroundArticleParser(BaseArticleParser):
         story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
 
+class GuardianArticleParser(BaseArticleParser):
+
+    @classmethod
+    def get_title(self, soup: BeautifulSoup) -> str:
+        title_element = soup.find('h1', {'class': 'content__headline'})
+        return title_element.text
+
+    @classmethod
+    def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
+        story_element_div = soup.find('div', {'class': 'content__article-body'})
+        story_elements = story_element_div.findAll('p')
+        return list(story_element.text for story_element in story_elements)
+
 class UniversalArticleParser(BaseArticleParser):
 
     parser_list = [
                 ('www.bbc.co.uk/news/', BBCArticleParser),
                 ('www.bbc.co.uk/bbcthree/', BBCThreeArticleParser),
                 ('www.bbc.co.uk/sport/', BBCSportArticleParser),
-                ('www.bbc.co.uk/newsround/', BBCNewsroundArticleParser)
+                ('www.bbc.co.uk/newsround/', BBCNewsroundArticleParser),
+                ('www.theguardian.com/politics', GuardianArticleParser)
             ]
 
     @classmethod
