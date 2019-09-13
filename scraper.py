@@ -1,5 +1,5 @@
 from typing import List
-import requests, os, hashlib
+import requests, os, hashlib, logging
 from urllib.parse import urlparse
 from abc import abstractmethod, ABCMeta
 from time import sleep
@@ -142,17 +142,20 @@ class Source(metaclass=ABCMeta):
             parser_cost, parser = max(
                 [(cost, parser) for (cost, parser) in self.parser_list if href.find(cost) >= 0],
                 key = lambda p : href.find(p[0]))
-            #logger.info(f'Chosen parser for {href}: {parser.__name__}')
-            print(f'Chosen parser for {href}: {parser.__name__}')
+            logger.info(f'Chosen parser for {href}: {parser.__name__}')
             return parser.parse(href)
         except ValueError as e:
-            #logger.error(f'Could not find a suitable parser for article {href}: ', e)
+            logger.error(f'ERROR: No suitable parser found for {href}', e)
             #Put article somewhere for inspection as to why find a parser failed.
-            print("ERROR: No suitable parser found")
+            return None
+        except Exception as e:
+            logger.error(f'ERROR: Parse failed for {href}', e)
             return None
 
     @classmethod
     def fetch_new(self) -> str:
+        logger.debug('Fetching hrefs...')
+
         articles = []
         hrefs = self.get_hrefs()
         for href in hrefs:
