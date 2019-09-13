@@ -13,9 +13,13 @@ def _get_bbc_frontpage_links():
 
     articles = []
 
+    blacklist = ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds']
+
     for article_element in article_elements:
         print(article_element.get('href'))
-        if 'bbcthree' in article_element.get('href'):
+        if any(x for x in blacklist if x in article_element.get('href')):
+            pass
+        elif 'bbcthree' in article_element.get('href'):
             articles.append(BBCThreeArticleParser.parse(article_element.get('href')))
         elif 'newsround' in article_element.get('href'):
             articles.append(BBCNewsroundArticleParser.parse(article_element.get('href')))
@@ -91,6 +95,8 @@ class BBCArticleParser(BaseArticleParser):
     @classmethod
     def get_title(self, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'story-body__h1'})
+        if title_element is None:
+            title_element = soup.find('span', {'class': 'cta'})
         return title_element.text if title_element is not None else None
 
     @classmethod
@@ -130,12 +136,12 @@ class BBCNewsroundArticleParser(BaseArticleParser):
     @classmethod
     def get_title(self, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'newsround-story-header__title-text'})
+        if title_element is None:
+            title_element = soup.find('h1', {'class': 'newsround-legacy-story-header__title-text'})
         return title_element.text if title_element is not None else None
 
     @classmethod
     def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
         story_element_div = soup.find('section', {'class': 'newsround-story-body'})
-        story_elements = story_element_div.findAll('p')
+        story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
-
-
