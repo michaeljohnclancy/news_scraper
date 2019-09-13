@@ -12,21 +12,17 @@ def _get_bbc_frontpage_links():
     article_elements = soup.findAll('a', {'class': 'top-story'})
 
     articles = []
-
-    blacklist = ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds']
+    blacklist = ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
 
     for article_element in article_elements:
-        print(article_element.get('href'))
-        if any(x for x in blacklist if x in article_element.get('href')):
-            pass
-        elif 'bbcthree' in article_element.get('href'):
-            articles.append(BBCThreeArticleParser.parse(article_element.get('href')))
-        elif 'newsround' in article_element.get('href'):
-            articles.append(BBCNewsroundArticleParser.parse(article_element.get('href')))
-        elif 'sport' in article_element.get('href'):
-            articles.append(BBCSportArticleParser.parse(article_element.get('href')))
-        else:
-            articles.append(BBCArticleParser.parse(article_element.get('href')))
+        url = article_element.get('href')
+        print(url)
+
+        if any(x for x in blacklist if x in url):
+            continue
+        article = UniversalArticleParser.parse(url)
+        if article != None:
+            articles.append(article)
 
     return articles
 
