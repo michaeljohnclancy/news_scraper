@@ -176,4 +176,4 @@ class BBC(Source):
 
     @classmethod
     def get_blacklist(self) -> List[str]:
-        return ['bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
+        return ['bbcthree/clips', 'sport', 'bitesize', 'programmes', 'archive', 'ideas', 'food', 'sounds', 'news/av']
