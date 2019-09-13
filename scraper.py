@@ -6,6 +6,8 @@ from time import sleep
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 
+logger = logging.getLogger(__name__)
+
 class BaseArticleParser(metaclass=ABCMeta):
 
     @abstractmethod
@@ -39,8 +41,8 @@ class BaseArticleParser(metaclass=ABCMeta):
 
     @classmethod
     def _cache_content(self, href, content):
-        cache_id = self.get_cache_id(href)
-        with open(f'.content_cache/{cache_id}.html', 'w+') as writer:
+        cache_loc = f'.content_cache/{self.get_cache_id(href)}.html'
+        with open(cache_loc, 'w+') as writer:
             writer.write(str(content))
 
     @classmethod
@@ -117,7 +119,6 @@ class BBCNewsroundArticleParser(BaseArticleParser):
         story_element_div = soup.find('section', {'class': 'newsround-story-body'})
         story_elements = story_element_div.findAll(['p', 'span'])
         return list(story_element.text for story_element in story_elements)
-
 
 class Source(metaclass=ABCMeta):
 
