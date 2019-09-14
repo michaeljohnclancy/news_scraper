@@ -1,7 +1,7 @@
 import logging, requests
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
-from typing import List
+from typing import List, Generator
 from abc import abstractmethod, ABCMeta
 from parsers import BaseArticleParser, BBCArticleParser, GuardianArticleParser, NYTimesArticleParser, ArticleParseException, BlacklistException
 
@@ -36,6 +36,19 @@ class Source(metaclass=ABCMeta):
 
         cls._write_erroneous_article_hrefs(erroneous_hrefs)
         return articles
+
+    @classmethod
+    # Yields empty string to signal 'next article not ready'
+    def article_stream(cls) -> Generator[str, None, None]:
+        hrefs = cls.get_hrefs()
+        for href in hrefs:
+            try:
+                yield cls.parser.parse(href)
+            except ArticleParseException as e:
+                logger.error(f'Could not parse article {href} using available {cls.__name__} parsers.')
+                cls._write_erroneous_article_hrefs([href])
+                raise e
+        raise OutOfArticlesException
 
     @classmethod
     def _write_erroneous_article_hrefs(cls, hrefs: List[str]) -> None:
@@ -81,3 +94,9 @@ class NYTimes(Source):
         article_div = soup.find('main')
         article_elements = article_div.findAll('a')
         return [urljoin(home_page_url, element.get('href').split('#')[0]) for element in article_elements]
+
+class SourceNotReadyException(Exception):
+    pass
+
+class OutOfArticlesException(Exception):
+    pass
