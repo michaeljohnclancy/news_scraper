@@ -2,7 +2,7 @@ import logging, requests
 from bs4 import BeautifulSoup
 from typing import List
 from abc import abstractmethod, ABCMeta
-from parsers import BaseArticleParser, BBCArticleParser, ArticleParseException
+from parsers import BaseArticleParser, BBCArticleParser, NYTimesArticleParser, ArticleParseException
 
 logger = logging.getLogger(__name__)
 
@@ -57,3 +57,18 @@ class BBC(Source):
         soup = BeautifulSoup(home_page.content, features = 'html.parser')
         article_elements = soup.findAll('a', {'class': 'top-story'})
         return [element.get('href') for element in article_elements]
+
+class NYTimes(Source):
+
+    parser = NYTimesArticleParser
+
+    @classmethod
+    def get_hrefs(cls) -> List[str]:
+        home_page_url = 'https://www.nytimes.com'
+        home_page = requests.get(home_page_url)
+        soup = BeautifulSoup(home_page.content, features = 'html.parser')
+        article_div = soup.find('main')
+        article_elements = article_div.findAll('a')
+        return [home_page_url+element.get('href').split('#')[0] for element in article_elements]
+
+
