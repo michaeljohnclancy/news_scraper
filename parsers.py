@@ -17,7 +17,7 @@ class BaseArticleParser(metaclass=ABCMeta):
         return
 
     @abstractmethod
-    def _get_body(cls, soup: BeautifulSoup) -> str:
+    def get_paragraphs(cls, soup: BeautifulSoup) -> str:
         return
 
     @classmethod
@@ -155,10 +155,11 @@ class BBCArticleParser(BaseArticleParser):
     #             'food', 'sounds', 'news/av']
 
     @classmethod
-    def _write_erroneous_article_hrefs(cls, hrefs: List[str]) -> None:
-        with open(f'.failed_hrefs/{cls.__name__}', 'a') as writer:
-            for href in hrefs:
-                writer.write(href + '\n')
+    def get_title(cls, soup: BeautifulSoup) -> str:
+        title_element = soup.find('h1', {'class': 'story-body__h1'})
+        if title_element is None:
+            title_element = soup.find('span', {'class': 'cta'})
+        return title_element.text if title_element is not None else None
 
     @classmethod
     def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
@@ -178,6 +179,19 @@ class GuardianArticleParser(BaseArticleParser):
     @classmethod
     def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
         story_element_div = soup.find('div', {'class': 'content__main-column'})
+        story_elements = story_element_div.findAll('p')
+        return list(story_element.text for story_element in story_elements)
+
+class NYTimesArticleParser(BaseArticleParser):
+
+    @classmethod
+    def get_title(cls, soup: BeautifulSoup) -> str:
+        title_element = soup.find('span', {'class': 'balancedHeadline'})
+        return title_element.text if title_element is not None else None
+
+    @classmethod
+    def get_paragraphs(cls, soup: BeautifulSoup) -> List[str]:
+        story_element_div = soup.find('section', {'name': 'articleBody'})
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
 
