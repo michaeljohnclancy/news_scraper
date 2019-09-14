@@ -17,7 +17,7 @@ class BaseArticleParser(metaclass=ABCMeta):
         return
 
     @abstractmethod
-    def _get_body(cls, soup: BeautifulSoup) -> str:
+    def get_paragraphs(cls, soup: BeautifulSoup) -> str:
         return
 
     @classmethod
