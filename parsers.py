@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class BaseArticleParser(metaclass=ABCMeta):
 
     subparsers: List[str] = []
+    blacklist: List[str] = []
 
     @abstractmethod
     def get_title(cls, soup: BeautifulSoup) -> str:
@@ -23,9 +24,10 @@ class BaseArticleParser(metaclass=ABCMeta):
     @classmethod
     def parse(cls, href: str) -> str:
         soup = cls.get_soup(href)
-
         parser = cls.choose_subparser(href)
 
+        if any(x for x in parser.blacklist if x in href):
+            raise BlacklistException
         try:
             return ' '.join([parser.get_title(soup)] + parser.get_paragraphs(soup))
         except Exception as e:
@@ -103,6 +105,8 @@ class BaseArticleParser(metaclass=ABCMeta):
 
 class BBCThreeArticleParser(BaseArticleParser):
 
+    blacklist = ['bbcthree/clip']
+
     @classmethod
     def get_title(cls, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'LongArticleParser-headline'})
@@ -150,9 +154,9 @@ class BBCArticleParser(BaseArticleParser):
                 ('www.bbc.co.uk/newsround/', BBCNewsroundArticleParser)
             ]
 
-    #blacklist = ['bbcthree/clips', 'sport', 'bitesize',
-    #             'programmes', 'archive', 'ideas',
-    #             'food', 'sounds', 'news/av']
+    blacklist = ['sport', 'bitesize',
+                 'programmes', 'archive', 'ideas',
+                 'food', 'sounds', 'news/av']
 
     @classmethod
     def get_title(cls, soup: BeautifulSoup) -> str:
@@ -183,4 +187,5 @@ class NYTimesArticleParser(BaseArticleParser):
 class ArticleParseException(Exception):
     pass
 
-
+class BlacklistException(Exception):
+    pass

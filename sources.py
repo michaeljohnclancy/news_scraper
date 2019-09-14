@@ -2,7 +2,7 @@ import logging, requests
 from bs4 import BeautifulSoup
 from typing import List
 from abc import abstractmethod, ABCMeta
-from parsers import BaseArticleParser, BBCArticleParser, NYTimesArticleParser, ArticleParseException
+from parsers import BaseArticleParser, BBCArticleParser, NYTimesArticleParser, ArticleParseException, BlacklistException
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +24,14 @@ class Source(metaclass=ABCMeta):
         hrefs = cls.get_hrefs()
 
         for href in hrefs:
-            #if any(x for x in cls.get_blacklist() if x in href):
-            #    continue
             try:
                 article = cls.parser.parse(href)
                 articles.append(article)
             except ArticleParseException as e:
                 logger.error(f'Could not parse article {href} using available {cls.__name__} parsers.')
                 erroneous_hrefs.append(href)
+            except BlacklistException as e:
+                logger.error(f'Blacklisted: {href}')
 
         cls._write_erroneous_article_hrefs(erroneous_hrefs)
         return articles
