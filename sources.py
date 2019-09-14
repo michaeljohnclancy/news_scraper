@@ -46,8 +46,8 @@ class Source(metaclass=ABCMeta):
             except ArticleParseException as e:
                 logger.error(f'Could not parse article {href} using available {cls.__name__} parsers.')
                 cls._write_erroneous_article_hrefs([href])
-                yield ""
-        return None
+                raise e
+        raise OutOfArticlesException
 
     @classmethod
     def _write_erroneous_article_hrefs(cls, hrefs: List[str]) -> None:
@@ -93,3 +93,9 @@ class NYTimes(Source):
         article_div = soup.find('main')
         article_elements = article_div.findAll('a')
         return [home_page_url+element.get('href').split('#')[0] for element in article_elements]
+
+class SourceNotReadyException(Exception):
+    pass
+
+class OutOfArticlesException(Exception):
+    pass

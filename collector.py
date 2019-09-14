@@ -11,12 +11,15 @@ class Collector():
 
         while True:
             for s in streams:
-                article = next(s)
-                if not article:
-                    continue # Next article not ready, move to next source
-                if article == None:
+                try:
+                    yield next(s)
+                except ArticleParseException as e:
+                    continue
+                except SourceNotReadyException as e:
+                    logger.error(f'Source is not ready: {s.__name__}')
+                except OutOfArticlesException as e:
                     streams.remove(s)
                     if not streams:
                         return None
                     break
-                yield article
+
