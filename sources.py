@@ -37,6 +37,7 @@ class Source(metaclass=ABCMeta):
         return articles
 
     @classmethod
+    # Yields empty string to signal 'next article not ready'
     def article_stream(cls) -> Generator[str, None, None]:
         hrefs = cls.get_hrefs()
         for href in hrefs:
@@ -45,6 +46,7 @@ class Source(metaclass=ABCMeta):
             except ArticleParseException as e:
                 logger.error(f'Could not parse article {href} using available {cls.__name__} parsers.')
                 cls._write_erroneous_article_hrefs([href])
+                yield ""
         return None
 
     @classmethod
