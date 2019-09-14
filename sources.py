@@ -1,6 +1,6 @@
 import logging, requests
 from bs4 import BeautifulSoup
-from typing import List
+from typing import List, Generator
 from abc import abstractmethod, ABCMeta
 from parsers import BaseArticleParser, BBCArticleParser, NYTimesArticleParser, ArticleParseException
 
@@ -35,6 +35,17 @@ class Source(metaclass=ABCMeta):
 
         cls._write_erroneous_article_hrefs(erroneous_hrefs)
         return articles
+
+    @classmethod
+    def article_stream(cls) -> Generator[str, None, None]:
+        hrefs = cls.get_hrefs()
+        for href in hrefs:
+            try:
+                yield cls.parser.parse(href)
+            except ArticleParseException as e:
+                logger.error(f'Could not parse article {href} using available {cls.__name__} parsers.')
+                cls._write_erroneous_article_hrefs([href])
+        return None
 
     @classmethod
     def _write_erroneous_article_hrefs(cls, hrefs: List[str]) -> None:
