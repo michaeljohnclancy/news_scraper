@@ -2,7 +2,7 @@ import logging, requests
 from bs4 import BeautifulSoup
 from typing import List, Generator
 from abc import abstractmethod, ABCMeta
-from parsers import BaseArticleParser, BBCArticleParser, NYTimesArticleParser, ArticleParseException
+from parsers import BaseArticleParser, BBCArticleParser, GuardianArticleParser, NYTimesArticleParser, ArticleParseException, BlacklistException
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +24,14 @@ class Source(metaclass=ABCMeta):
         hrefs = cls.get_hrefs()
 
         for href in hrefs:
-            #if any(x for x in cls.get_blacklist() if x in href):
-            #    continue
             try:
                 article = cls.parser.parse(href)
                 articles.append(article)
             except ArticleParseException as e:
                 logger.error(f'Could not parse article {href} using available {cls.__name__} parsers.')
                 erroneous_hrefs.append(href)
+            except BlacklistException as e:
+                logger.error(f'Blacklisted: {href}')
 
         cls._write_erroneous_article_hrefs(erroneous_hrefs)
         return articles
@@ -71,6 +71,16 @@ class BBC(Source):
         article_elements = soup.findAll('a', {'class': 'top-story'})
         return [element.get('href') for element in article_elements]
 
+class Guardian(Source):
+    parser = GuardianArticleParser
+
+    @classmethod
+    def get_hrefs(cls) -> List[str]:
+        home_page = requests.get('https://www.theguardian.com')
+        soup = BeautifulSoup(home_page.content)
+        article_elements = soup.findAll('a', {'class': 'fc-item__link'})
+        return [element.get('href') for element in article_elements]
+
 class NYTimes(Source):
 
     parser = NYTimesArticleParser
@@ -83,5 +93,3 @@ class NYTimes(Source):
         article_div = soup.find('main')
         article_elements = article_div.findAll('a')
         return [home_page_url+element.get('href').split('#')[0] for element in article_elements]
-
-
