@@ -63,7 +63,7 @@ class Guardian(Source):
 
     @classmethod
     def get_hrefs(cls) -> List[str]:
-        home_page = requests.get('https://www.theguardian.com/uk')
+        home_page = requests.get('https://www.theguardian.com')
         soup = BeautifulSoup(home_page.content)
         article_elements = soup.findAll('a', {'class': 'fc-item__link'})
         return [element.get('href') for element in article_elements]

@@ -169,12 +169,10 @@ class BBCArticleParser(BaseArticleParser):
 
 class GuardianArticleParser(BaseArticleParser):
 
-    subparsers = []
-
     @classmethod
     def get_title(self, soup: BeautifulSoup) -> str:
         title_element = soup.find('h1', {'class': 'content__headline '})
-        return title_element.text
+        return title_element.text if title_element is not None else None
 
     @classmethod
     def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
