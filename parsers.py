@@ -171,6 +171,19 @@ class BBCArticleParser(BaseArticleParser):
         story_elements = story_element_div.findAll('p')
         return list(story_element.text for story_element in story_elements)
 
+class GuardianArticleParser(BaseArticleParser):
+
+    @classmethod
+    def get_title(self, soup: BeautifulSoup) -> str:
+        title_element = soup.find('h1', {'class': 'content__headline '})
+        return title_element.text if title_element is not None else None
+
+    @classmethod
+    def get_paragraphs(self, soup: BeautifulSoup) -> List[str]:
+        story_element_div = soup.find('div', {'class': 'content__main-column'})
+        story_elements = story_element_div.findAll('p')
+        return list(story_element.text for story_element in story_elements)
+
 class NYTimesArticleParser(BaseArticleParser):
 
     @classmethod
