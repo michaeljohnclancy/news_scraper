@@ -1,11 +1,11 @@
 from typing import Generator
-from sources import BBC, NYTimes
+from sources import *
 
 class Collector():
 
     @classmethod
     def article_stream(cls) -> Generator[str, None, None]:
-        sources = [ BBC, NYTimes ]
+        sources = [ BBC, Guardian, NYTimes ]
 
         streams = [ s.article_stream() for s in sources ]
 
