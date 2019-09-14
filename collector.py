@@ -6,17 +6,23 @@ class Collector():
     @classmethod
     def article_stream(cls) -> Generator[str, None, None]:
         sources = [ BBC, Guardian, NYTimes ]
-
         streams = [ s.article_stream() for s in sources ]
 
         while True:
-            for s in streams:
-                article = next(s)
-                if not article:
-                    continue # Next article not ready, move to next source
-                if article == None:
+            for i,stream in enumerate(streams):
+                source = sources[i].__name__
+                logger.info(f'Fetching article from {source}: ')
+                try:
+                    (href, article) = next(stream)
+                    if not href:
+                        continue
+                    logger.info(f'Parsed article {href}: ')
+                    yield article
+                except StopIteration as e:
+                    logger.error(f'Source is out of articles: {sources[i].__name__}')
                     streams.remove(s)
+                    sources.remove(sources[i])
                     if not streams:
                         return None
                     break
-                yield article
+
