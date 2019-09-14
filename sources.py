@@ -1,4 +1,5 @@
 import logging, requests
+from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from typing import List, Generator
 from abc import abstractmethod, ABCMeta
@@ -92,7 +93,7 @@ class NYTimes(Source):
         soup = BeautifulSoup(home_page.content, features = 'html.parser')
         article_div = soup.find('main')
         article_elements = article_div.findAll('a')
-        return [home_page_url+element.get('href').split('#')[0] for element in article_elements]
+        return [urljoin(home_page_url, element.get('href').split('#')[0]) for element in article_elements]
 
 class SourceNotReadyException(Exception):
     pass
