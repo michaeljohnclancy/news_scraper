@@ -2,7 +2,7 @@ import logging, requests
 from bs4 import BeautifulSoup
 from typing import List
 from abc import abstractmethod, ABCMeta
-from parsers import BaseArticleParser, BBCArticleParser, ArticleParseException
+from parsers import BaseArticleParser, BBCArticleParser, NYTimesArticleParser, ArticleParseException
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class BBC(Source):
 
 class NYTimes(Source):
 
-    #parser = NYTimesArticleParser
+    parser = NYTimesArticleParser
 
     @classmethod
     def get_hrefs(cls) -> List[str]:
